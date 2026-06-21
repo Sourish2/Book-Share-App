@@ -1,0 +1,137 @@
+.reader-page {
+
+    min-height: 100vh;
+
+    background: #000;
+
+    color: white;
+
+    display: flex;
+
+    flex-direction: column;
+
+}
+
+.reader-toolbar {
+
+    display: flex;
+
+    align-items: center;
+
+    gap: 1rem;
+
+    padding: 1rem 2rem;
+
+}
+
+.reader-toolbar button {
+
+    padding:
+        0.7rem 1.2rem;
+
+    border: none;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+}
+
+.reader-container {
+
+    flex: 1;
+
+    display: flex;
+
+    justify-content: center;
+
+    align-items: center;
+
+    gap: 2rem;
+
+}
+
+.book-frame {
+
+    position: relative;
+
+    width: 900px;
+
+    height: 650px;
+
+
+    background: white;
+
+    border-radius: 10px;
+
+    overflow: hidden;
+
+    box-shadow:
+
+        0 0 40px
+        rgba(
+            0,
+            0,
+            0,
+            0.6
+        );
+
+}
+
+.epub-viewer {
+
+    width: 900px;
+
+    height: 650px;
+
+}
+
+
+
+.nav-btn {
+
+    width: 60px;
+
+    height: 60px;
+
+    border: none;
+
+    border-radius: 50%;
+
+    cursor: pointer;
+
+    font-size: 1.5rem;
+
+}
+
+.page-overlay {
+
+    position: absolute;
+
+    inset: 0;
+
+    display: flex;
+
+    z-index: 100;
+
+}
+
+.left-click {
+
+    width: 50%;
+
+    height: 100%;
+
+    cursor: w-resize;
+
+}
+
+.right-click {
+
+    width: 50%;
+
+    height: 100%;
+
+    cursor: e-resize;
+
+}

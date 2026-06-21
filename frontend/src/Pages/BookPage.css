@@ -1,0 +1,62 @@
+.book-page {
+
+    min-height: 100vh;
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: center;
+
+    justify-content: center;
+
+    gap: 1.5rem;
+
+    padding: 2rem;
+
+}
+
+.book-page-cover {
+
+    width: 260px;
+
+    height: 380px;
+
+    object-fit: cover;
+
+    border-radius: 12px;
+
+    box-shadow:
+        0 0 30px
+        rgba(
+            255,
+            255,
+            255,
+            0.2
+        );
+
+}
+
+.book-actions {
+
+    display: flex;
+
+    gap: 1rem;
+
+}
+
+.book-actions button,
+.back-btn {
+
+    padding:
+        0.8rem 1.5rem;
+
+    border: none;
+
+    border-radius: 8px;
+
+    cursor: pointer;
+
+    font-size: 1rem;
+
+}
