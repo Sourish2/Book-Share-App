@@ -16,8 +16,7 @@ import SearchBar from "../Components/Searchbar";
 import BookGrid from "../Components/Bookgrid";
 
 const API_URL =
-  process.env.REACT_APP_API_URL ||
-  "http://localhost:5000";
+  process.env.REACT_APP_API_URL
 function Home() {
 
   const navigate =
@@ -54,7 +53,6 @@ function Home() {
 
           const data =
             await response.json();
-
           setBooks(data);
 
         }

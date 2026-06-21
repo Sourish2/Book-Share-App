@@ -1,5 +1,5 @@
 import {
-  BrowserRouter,
+  HashRouter,
   Routes,
   Route
 } from "react-router-dom";
@@ -10,7 +10,7 @@ import BookPage from "./Pages/BookPage"
 import ReaderPage from "./Pages/ReaderPage";
 function App() {
   return (
-    <BrowserRouter>
+    <HashRouter>
 
       <Routes>
 
@@ -37,7 +37,7 @@ function App() {
 
       </Routes>
 
-    </BrowserRouter>
+    </HashRouter>
   );
 }
 
