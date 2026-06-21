@@ -1,0 +1,13 @@
+{
+  "files": {
+    "main.css": "/Book-Share-App/static/css/main.0bab5b1d.css",
+    "main.js": "/Book-Share-App/static/js/main.38cbcc83.js",
+    "index.html": "/Book-Share-App/index.html",
+    "main.0bab5b1d.css.map": "/Book-Share-App/static/css/main.0bab5b1d.css.map",
+    "main.38cbcc83.js.map": "/Book-Share-App/static/js/main.38cbcc83.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.0bab5b1d.css",
+    "static/js/main.38cbcc83.js"
+  ]
+}
