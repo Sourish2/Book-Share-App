@@ -14,7 +14,7 @@ import {
 import Navbar from "../Components/Navbar";
 import SearchBar from "../Components/Searchbar";
 import BookGrid from "../Components/Bookgrid";
-
+import FeaturedCarousel from "../Components/FeaturedCarousel";
 const API_URL =
   process.env.REACT_APP_API_URL
 function Home() {
@@ -155,6 +155,9 @@ function Home() {
         setSearch={setSearch}
         surpriseMe={surpriseMe}
       />
+      <FeaturedCarousel
+    books={books.slice(0, 10)}
+    onBookClick={openBook}/>
 
       <div
 

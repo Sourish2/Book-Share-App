@@ -9,4 +9,7 @@ frontend/.env.*
 backend/.env
 backend/.env.*
 
+backend/covers/*
+backend/uploads/*
+
 *.log  

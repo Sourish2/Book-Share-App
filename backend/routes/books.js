@@ -2,298 +2,464 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
-const sharp = require("sharp");
+
+const {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command
+} = require(
+  "@aws-sdk/client-s3"
+);
 
 const router = express.Router();
 
-const storage = multer.diskStorage({
+const upload =
+  multer({
 
-    destination: (req, file, cb) => {
+    storage:
+      multer.memoryStorage()
 
-        cb(
-            null,
-            "uploads/"
-        );
+  });
 
-    },
 
-    filename: (req, file, cb) => {
+const s3 =
+  new S3Client({
 
-        cb(
-            null,
-            file.originalname
-        );
+    region:
+      process.env.AWS_REGION,
+
+    credentials: {
+
+      accessKeyId:
+        process.env
+          .AWS_ACCESS_KEY_ID,
+
+      secretAccessKey:
+        process.env
+          .AWS_SECRET_ACCESS_KEY
 
     }
 
-});
-
-
-const upload = multer({
-    storage
-});
-
+  });
 
 
 router.post(
-    "/upload",
 
-    upload.fields([
-        {
-            name: "book",
-            maxCount: 1
-        },
-        {
-            name: "cover",
-            maxCount: 1
-        }
-    ]),
+  "/upload",
 
-    async (req, res) => {
-
-        try {
-
-            const book =
-                req.files.book?.[0];
-
-            const cover =
-                req.files.cover?.[0];
-
-            if (!book) {
-
-                return res
-                    .status(400)
-                    .json({
-
-                        success: false,
-
-                        message:
-                            "No EPUB selected"
-
-                    });
-
-            }
-
-            const bookName =
-                path.parse(
-                    book.filename
-                ).name;
-
-            if (cover) {
-
-                const coverPath =
-                    path.join(
-                        __dirname,
-                        "..",
-                        "covers",
-                        `${bookName}.jpg`
-                    );
-
-                fs.renameSync(
-                    cover.path,
-                    coverPath
-                );
-
-            }
-
-            res.json({
-
-                success: true,
-
-                filename:
-                    book.filename,
-
-                cover:
-                    cover
-                        ? `/covers/${bookName}.jpg`
-                        : null
-
-            });
-
-        }
-        catch (error) {
-
-            console.error(
-                error
-            );
-
-            res.status(500)
-                .json({
-
-                    success: false,
-
-                    message:
-                        "Upload failed"
-
-                });
-
-        }
-
+  upload.fields([
+    {
+      name: "book",
+      maxCount: 1
+    },
+    {
+      name: "cover",
+      maxCount: 1
     }
-);
+  ]),
 
-router.get(
-    "/books/:filename",
-    (req, res) => {
+  async (req, res) => {
 
-        const filename =
-            req.params.filename;
+    try {
 
-        const filePath =
-            path.join(
-                __dirname,
-                "..",
-                "uploads",
-                filename
-            );
+      const book =
+        req.files.book?.[0];
 
-        if (
-            !fs.existsSync(filePath)
-        ) {
-            return res
-                .status(404)
-                .json({
-                    success: false,
-                    message:
-                        "Book not found"
-                });
-        }
+      const cover =
+        req.files.cover?.[0];
 
-        res.sendFile(filePath);
+      if (!book) {
 
-    }
-);
+        return res
+          .status(400)
+          .json({
 
-router.get(
-    "/books/download/:filename",
+            success: false,
 
-    (req, res) => {
+            message:
+              "No EPUB selected"
 
-        const filename =
-            req.params.filename;
+          });
 
-        const filePath =
-            path.join(
-                __dirname,
-                "..",
-                "uploads",
-                filename
-            );
+      }
 
-        if (
-            !fs.existsSync(
-                filePath
-            )
-        ) {
+      const bookName =
+        path.parse(
+          book.originalname
+        ).name;
 
-            return res
-                .status(404)
-                .json({
+      const bookKey =
+        `books/${book.originalname}`;
 
-                    success: false,
+      await s3.send(
 
-                    message:
-                        "Book not found"
+        new PutObjectCommand({
 
-                });
+          Bucket:
+            process.env.S3_BUCKET,
 
-        }
+          Key:
+            bookKey,
 
-        res.download(
-            filePath,
-            filename,
-            (err) => {
+          Body:
+            book.buffer,
 
-                if (err) {
+          ContentType:
+            "application/epub+zip"
 
-                    console.error(
-                        err
-                    );
+        })
 
-                }
+      );
 
-            }
+      let coverKey =
+        null;
+
+      if (cover) {
+
+        coverKey =
+          `covers/${bookName}.jpg`;
+
+        await s3.send(
+
+          new PutObjectCommand({
+
+            Bucket:
+              process.env.S3_BUCKET,
+
+            Key:
+              coverKey,
+
+            Body:
+              cover.buffer,
+
+            ContentType:
+              cover.mimetype
+
+          })
+
         );
 
+      }
+
+      res.json({
+
+        success: true,
+
+        filename:
+          book.originalname,
+
+        bookKey,
+
+        coverKey
+
+      });
+
     }
+
+    catch (error) {
+
+      console.error(
+        error
+      );
+
+      res.status(500)
+        .json({
+
+          success: false,
+
+          message:
+            "Upload failed",
+
+          error:
+            error.message
+
+        });
+
+    }
+
+  }
+
+);
+router.get(
+  "/books/:filename",
+
+  async (req, res) => {
+
+    try {
+
+      const filename =
+        req.params.filename;
+
+      const object =
+        await s3.send(
+
+          new GetObjectCommand({
+
+            Bucket:
+              process.env.S3_BUCKET,
+
+            Key:
+              `books/${filename}`
+
+          })
+
+        );
+
+      res.setHeader(
+        "Content-Type",
+        "application/epub+zip"
+      );
+
+      object.Body.pipe(res);
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      res.status(404)
+        .json({
+
+          success: false,
+
+          message:
+            "Book not found"
+
+        });
+
+    }
+
+  }
 );
 
 router.get(
-    "/books/home/:count",
-    (req, res) => {
 
-        const count =
-            parseInt(
-                req.params.count
-            ) || 10;
+  "/books/download/:filename",
 
-        const uploadPath =
-            path.join(
-                __dirname,
-                "..",
-                "uploads"
-            );
+  async (req, res) => {
 
-        const coverPath =
-            path.join(
-                __dirname,
-                "..",
-                "covers"
-            );
+    try {
 
-        const books =
-            fs.readdirSync(uploadPath)
+      const filename =
+        req.params.filename;
 
-                .filter(
-                    file =>
-                        file.endsWith(".epub")
+      const object =
+        await s3.send(
+
+          new GetObjectCommand({
+
+            Bucket:
+              process.env.S3_BUCKET,
+
+            Key:
+              `books/${filename}`
+
+          })
+
+        );
+
+      res.setHeader(
+
+        "Content-Disposition",
+
+        `attachment; filename="${filename}"`
+
+      );
+
+      res.setHeader(
+        "Content-Type",
+        "application/epub+zip"
+      );
+
+      object.Body.pipe(res);
+
+    }
+
+    catch (error) {
+
+      console.error(error);
+
+      res.status(404)
+        .json({
+
+          success: false,
+
+          message:
+            "Book not found"
+
+        });
+
+    }
+
+  }
+
+);
+
+router.get(
+
+  "/books/home/:count",
+
+  async (req, res) => {
+
+    try {
+
+      const count =
+        parseInt(
+          req.params.count
+        ) || 10;
+
+      const result =
+        await s3.send(
+
+          new ListObjectsV2Command({
+
+            Bucket:
+              process.env.S3_BUCKET,
+
+            Prefix:
+              "books/"
+
+          })
+
+        );
+
+      const books =
+
+        (result.Contents || [])
+
+          .filter(
+
+            object =>
+
+              object.Key
+                .endsWith(
+                  ".epub"
                 )
 
-                .map(file => {
+          )
 
-                    const title =
-                        path.parse(file)
-                            .name;
+          .map(object => {
 
-                    const coverFile =
-                        path.join(
-                            coverPath,
-                            `${title}.jpg`
-                        );
+            const filename =
 
-                    return {
-
-                        title,
-
-                        filename:
-                            file,
-
-                        cover:
-                            fs.existsSync(
-                                coverFile
-                            )
-                                ? `/covers/${title}.jpg`
-                                : null
-
-                    };
-
-                });
-
-        const shuffled =
-            [...books]
-                .sort(
-                    () =>
-                        Math.random() - 0.5
+              object.Key
+                .replace(
+                  "books/",
+                  ""
                 );
 
-        res.json(
-            shuffled.slice(
-                0,
-                count
-            )
-        );
+            const title =
+
+              path.parse(
+                filename
+              ).name;
+
+            return {
+
+              title,
+
+              filename,
+
+              cover:
+                `/api/covers/${title}.jpg`
+
+            };
+
+          });
+
+      const shuffled =
+
+        [...books]
+
+          .sort(
+            () =>
+              Math.random()
+              - 0.5
+          );
+
+      res.json(
+
+        shuffled.slice(
+          0,
+          count
+        )
+
+      );
 
     }
+
+    catch (error) {
+
+      console.error(
+        error
+      );
+
+      res.status(500)
+        .json({
+
+          success: false,
+
+          message:
+            "Failed to load books"
+
+        });
+
+    }
+
+  }
+
+);
+
+router.get(
+
+  "/covers/:filename",
+
+  async (req, res) => {
+
+    try {
+
+      const object =
+        await s3.send(
+
+          new GetObjectCommand({
+
+            Bucket:
+              process.env.S3_BUCKET,
+
+            Key:
+              `covers/${req.params.filename}`
+
+          })
+
+        );
+
+      res.setHeader(
+        "Content-Type",
+        "image/jpeg"
+      );
+
+      object.Body.pipe(res);
+
+    }
+
+    catch (error) {
+
+      res.status(404)
+        .json({
+
+          success: false,
+
+          message:
+            "Cover not found"
+
+        });
+
+    }
+
+  }
+
 );
 
 module.exports = router;
