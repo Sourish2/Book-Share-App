@@ -28,10 +28,10 @@ function BookPage() {
         );
 
     const coverUrl =
-        `${API_URL}/covers/${title}.jpg`;
+        `${API_URL}/api/covers/${title}.jpg`;
 
     const downloadUrl =
-        `${API_URL}/api/books/${encodeURIComponent(
+        `${API_URL}/api/books/download/${encodeURIComponent(
             filename
         )}`;
 
