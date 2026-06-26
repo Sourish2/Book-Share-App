@@ -2,6 +2,17 @@ const express = require("express");
 const multer = require("multer");
 const path = require("path");
 const fs = require("fs");
+const mysql = require("mysql2/promise");
+
+const db = mysql.createPool({
+
+  host: process.env.DB_HOST,
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_NAME,
+  port: process.env.DB_PORT
+
+});
 
 const {
   S3Client,
@@ -91,27 +102,6 @@ router.post(
 
       const bookKey =
         `books/${book.originalname}`;
-
-      await s3.send(
-
-        new PutObjectCommand({
-
-          Bucket:
-            process.env.S3_BUCKET,
-
-          Key:
-            bookKey,
-
-          Body:
-            book.buffer,
-
-          ContentType:
-            "application/epub+zip"
-
-        })
-
-      );
-
       let coverKey =
         null;
 
@@ -141,6 +131,28 @@ router.post(
         );
 
       }
+
+      await s3.send(
+
+        new PutObjectCommand({
+
+          Bucket:
+            process.env.S3_BUCKET,
+
+          Key:
+            bookKey,
+
+          Body:
+            book.buffer,
+
+          ContentType:
+            "application/epub+zip"
+
+        })
+
+      );
+
+      
 
       res.json({
 
@@ -310,82 +322,50 @@ router.get(
           req.params.count
         ) || 10;
 
-      const result =
-        await s3.send(
-
-          new ListObjectsV2Command({
-
-            Bucket:
-              process.env.S3_BUCKET,
-
-            Prefix:
-              "books/"
-
-          })
-
-        );
+      const [rows] = await db.query(
+    `
+    SELECT
+        title,
+        filename,
+        cover_key
+    FROM books
+    ORDER BY RAND()
+    LIMIT ${Number(count)}
+    `
+);
 
       const books =
 
-        (result.Contents || [])
+        rows.map(book => {
 
-          .filter(
+          const cleanTitle =
 
-            object =>
+            book.title
 
-              object.Key
-                .endsWith(
-                  ".epub"
-                )
+              .replace(
+                /\s*\(\d+\)\s*$/g,
+                ""
+              );
 
-          )
+          return {
 
-          .map(object => {
+            title:
+              cleanTitle,
 
-            const filename =
+            filename:
+              book.filename,
 
-              object.Key
-                .replace(
-                  "books/",
-                  ""
-                );
+            cover:
+              book.cover_key
+                ? `/api/covers/${book.title}.jpg`
+                : null
 
-            const title =
+          };
 
-              path.parse(
-                filename
-              ).name;
-
-            return {
-
-              title,
-
-              filename,
-
-              cover:
-                `/api/covers/${title}.jpg`
-
-            };
-
-          });
-
-      const shuffled =
-
-        [...books]
-
-          .sort(
-            () =>
-              Math.random()
-              - 0.5
-          );
+        });
 
       res.json(
-
-        shuffled.slice(
-          0,
-          count
-        )
-
+        books
       );
 
     }
@@ -460,6 +440,54 @@ router.get(
 
   }
 
+);
+
+router.get("/books/search/:name",async (req,res)=>{
+  try{
+    const name=req.params.name;
+    const [rows]=await db.query(`SELECT title,filename,cover_key
+      FROM books
+      WHERE title like ?
+      ORDER BY title`,
+    `${name}%`);
+    const books=rows.map(book=>{
+      const cleanTitle =
+            book.title.replace(
+              /(\s*\(\d+\))+$/g,
+              ""
+            );
+
+          return {
+
+            title:
+              cleanTitle,
+
+            filename:
+              book.filename,
+
+            cover:
+              book.cover_key
+                ? `/api/covers/${encodeURIComponent(book.cover_key.replace("covers/", ""))}`
+                : null
+          };
+    });
+    res.json(books);
+  }
+  catch(error){
+    console.error(error);
+
+      res.status(500).json({
+
+        success: false,
+
+        message:
+          "Search failed"
+
+      });
+
+    }
+
+}
 );
 
 module.exports = router;

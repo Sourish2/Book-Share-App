@@ -72,16 +72,30 @@ function Home() {
     loadBooks();
 
   }, []);
+  const [searchResults, setSearchResults] = useState([]);
+  useEffect(() => {
+
+    if (search.trim() === "") {
+
+        setSearchResults([]);
+        return;
+
+    }
+
+    fetch(
+        `${API_URL}/api/books/search/${encodeURIComponent(search)}`
+    )
+        .then(res => res.json())
+        .then(data => setSearchResults(data));
+
+}, [search]);
 
   const filteredBooks =
-    books.filter(
-      (book) =>
-        book.title
-          .toLowerCase()
-          .includes(
-            search.toLowerCase()
-          )
-    );
+    search.trim() === ""
+        ? books
+        : searchResults.length > 0
+            ? searchResults
+            : books;
 
   const surpriseMe = () => {
 
@@ -150,14 +164,14 @@ function Home() {
 
       <Navbar />
 
-      <SearchBar
+      <FeaturedCarousel
+    books={books.slice(0, 3)}
+    onBookClick={openBook}/>
+     <SearchBar
         search={search}
         setSearch={setSearch}
         surpriseMe={surpriseMe}
       />
-      <FeaturedCarousel
-    books={books.slice(0, 10)}
-    onBookClick={openBook}/>
 
       <div
 
@@ -174,6 +188,8 @@ function Home() {
         }}
 
       >
+
+        
 
         <BookGrid
 
